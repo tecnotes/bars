@@ -8,6 +8,8 @@ import (
    //"log"
    "crypto/md5"
    "encoding/hex"
+   "database/sql"
+   _ "github.com/mattn/go-sqlite3"
 )
 
 
@@ -110,6 +112,31 @@ func md5sum(filePath string) (result string, err error) {
     return
 }
 
+func createdb() {
+    db, err := sql.Open("sqlite3", "barsff.db")
+        checkErr(err)
+	
+	stmt, err := db.Prepare("INSERT INTO userinfo(username, departname, created) values(?,?,?)")
+		checkErr(err)
+	
+	res, err := stmt.Exec("astaxie", "123", "2012-12-09")
+        checkErr(err)
+
+        id, err := res.LastInsertId()
+        checkErr(err)
+
+        fmt.Println(id)
+	
+	db.Close()
+
+}
+
+func checkErr(err error) {
+        if err != nil {
+            fmt.Println(err)
+        }
+    }
+
 func main() {
     flag.Parse() // get the source and destination directory
 
@@ -117,7 +144,7 @@ func main() {
 
     dest_dir := flag.Arg(1) // get the destination directory from the 2nd argument
 
-    fmt.Println("Source :" + source_dir)
+    fmt.Println("Source : " + source_dir)
 
     // check if the source dir exist
     src, err := os.Stat(source_dir)
@@ -131,14 +158,17 @@ func main() {
     }
 
     // create the destination directory
-    fmt.Println("Destination :"+ dest_dir)
+    fmt.Println("Destination : "+ dest_dir)
 
     _, err = os.Open(dest_dir)
     if !os.IsNotExist(err) {
         fmt.Println("Destination directory already exists. Abort!")
         os.Exit(1)
     }
+	
+	createdb()
 
+    
     err = CopyDir(source_dir, dest_dir)
     if err != nil {
       fmt.Println(err)
