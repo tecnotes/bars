@@ -1,6 +1,6 @@
 package main
 
- import (
+import (
    "os"
    "flag"
    "fmt"
@@ -8,119 +8,92 @@ package main
    //"log"
    "crypto/md5"
    "encoding/hex"
- )
+)
 
 
 
- func CopyFile(source string, dest string) (err error) {
-     sourcefile, err := os.Open(source)
-     if err != nil {
-         return err
-     }
+func CopyFile(source string, dest string) (err error) {
+    sourcefile, err := os.Open(source)
+    if err != nil {
+        return err
+    }
 
-     defer sourcefile.Close()
+    defer sourcefile.Close()
 	 
-	 //h := md5.New()
-	 //if _, err := io.Copy(h, sourcefile); err != nil {
-	 //	log.Fatal(err)
-	 //}
+    destfile, err := os.Create(dest)
+    if err != nil {
+		return err
+    }
 
-	 //fmt.Printf(" ", h.Sum(nil))
-	
-     destfile, err := os.Create(dest)
-     if err != nil {
-         return err
-     }
-
-     defer destfile.Close()
+    defer destfile.Close()
 	 
-	 //destfile_check, err := os.Open(dest)
-     //fmt.Println("dest -", dest)
-	 //if err != nil {
-     //    return err
-     //}
-	 //h := md5.New()
-	 //if _, err := io.Copy(h, destfile_check); err != nil {
-	 //	log.Fatal(err)
-	 //}
-	 
-	 //fmt.Printf("%x", h.Sum(nil))
+    _, err = io.Copy(destfile, sourcefile)
+    if err == nil {
+        sourceinfo, err := os.Stat(source)
+        if err != nil {
+            err = os.Chmod(dest, sourceinfo.Mode())
+        }
+    }
+    return
+}
 
-     _, err = io.Copy(destfile, sourcefile)
-     if err == nil {
-         sourceinfo, err := os.Stat(source)
-         if err != nil {
-             err = os.Chmod(dest, sourceinfo.Mode())
-         }
+func CopyDir(source string, dest string) (err error) {
 
-     }
-	 
-     return
- }
+    // get properties of source dir
+    sourceinfo, err := os.Stat(source)
+    if err != nil {
+        return err
+    }
 
- func CopyDir(source string, dest string) (err error) {
+    // create dest dir
+    err = os.MkdirAll(dest, sourceinfo.Mode())
+    if err != nil {
+        return err
+    }
 
-     // get properties of source dir
-     sourceinfo, err := os.Stat(source)
-     if err != nil {
-         return err
-     }
+    directory, _ := os.Open(source)
 
-     // create dest dir
+    objects, err := directory.Readdir(-1)
 
-     err = os.MkdirAll(dest, sourceinfo.Mode())
-     if err != nil {
-         return err
-     }
-
-     directory, _ := os.Open(source)
-
-     objects, err := directory.Readdir(-1)
-
-     for _, obj := range objects {
+    for _, obj := range objects {
 		obj := obj
-         sourcefilepointer := source + "/" + obj.Name()
+      
+		sourcefilepointer := source + "/" + obj.Name()
+        destinationfilepointer := dest + "/" + obj.Name()
 
-         destinationfilepointer := dest + "/" + obj.Name()
-
-
-         if obj.IsDir() {
-             // create sub-directories - recursively
-             err = CopyDir(sourcefilepointer, destinationfilepointer)
-			 fmt.Println(sourcefilepointer)
-             if err != nil {
-                 fmt.Println(err)
-             }
-         } else {
-             // perform copy
-             err = CopyFile(sourcefilepointer, destinationfilepointer)
-			 fmt.Println(sourcefilepointer)
-			 			 fmt.Println(err)
-             if err != nil {
-                 fmt.Println(err)
-             }
-			 //fmt.Println(destinationfilepointer)
-			 md1, err := md5sum(sourcefilepointer)
-			 fmt.Println(md1)
-			 if err != nil {
+		if obj.IsDir() {
+            // create sub-directories - recursively
+            err = CopyDir(sourcefilepointer, destinationfilepointer)
+			fmt.Println(sourcefilepointer)
+            if err != nil {
+                fmt.Println(err)
+            }
+        } else {
+            // perform copy
+            err = CopyFile(sourcefilepointer, destinationfilepointer)
+			fmt.Println(sourcefilepointer)
+			fmt.Println(err)
+            if err != nil {
+                fmt.Println(err)
+            }
+			//fmt.Println(destinationfilepointer)
+			md1, err := md5sum(sourcefilepointer)
+			fmt.Println(md1)
+			if err != nil {
 				fmt.Println(err)
-			 }
-			 fmt.Println(destinationfilepointer)
-			 md2, err := md5sum(destinationfilepointer)
-			 fmt.Println(md2)
-			 if err != nil {
+			}
+			fmt.Println(destinationfilepointer)
+			md2, err := md5sum(destinationfilepointer)
+			fmt.Println(md2)
+			if err != nil {
 				fmt.Println(err)
-			 }
+			}
+        }
+    }
+    return
+}
 
-
-
-         }
-
-     }
-     return
- }
-
- func md5sum(filePath string) (result string, err error) {
+func md5sum(filePath string) (result string, err error) {
     file, err := os.Open(filePath)
     if err != nil {
         return
@@ -137,40 +110,39 @@ package main
     return
 }
 
- func main() {
-   flag.Parse() // get the source and destination directory
+func main() {
+    flag.Parse() // get the source and destination directory
 
-   source_dir := flag.Arg(0) // get the source directory from 1st argument
+    source_dir := flag.Arg(0) // get the source directory from 1st argument
 
-   dest_dir := flag.Arg(1) // get the destination directory from the 2nd argument
+    dest_dir := flag.Arg(1) // get the destination directory from the 2nd argument
 
-   fmt.Println("Source :" + source_dir)
+    fmt.Println("Source :" + source_dir)
 
-   // check if the source dir exist
-   src, err := os.Stat(source_dir)
-   if err != nil {
+    // check if the source dir exist
+    src, err := os.Stat(source_dir)
+    if err != nil {
       panic(err)
-   }
+    }
 
-   if !src.IsDir() {
+    if !src.IsDir() {
      fmt.Println("Source is not a directory")
      os.Exit(1)
-   }
+    }
 
-   // create the destination directory
-   fmt.Println("Destination :"+ dest_dir)
+    // create the destination directory
+    fmt.Println("Destination :"+ dest_dir)
 
-   _, err = os.Open(dest_dir)
-   if !os.IsNotExist(err) {
-     fmt.Println("Destination directory already exists. Abort!")
-     os.Exit(1)
-   }
+    _, err = os.Open(dest_dir)
+    if !os.IsNotExist(err) {
+        fmt.Println("Destination directory already exists. Abort!")
+        os.Exit(1)
+    }
 
-   err = CopyDir(source_dir, dest_dir)
-   if err != nil {
+    err = CopyDir(source_dir, dest_dir)
+    if err != nil {
       fmt.Println(err)
-   } else {
-      fmt.Println("Directory copied")
-   }
-
+    } else {
+        fmt.Println("Directory copied")
+    }
  }
